@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Annualised Hours Advanced Scheduler</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1, h2, h3 {
+      color: #333;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      margin-bottom: 15px;
+    }
+    .section {
+      margin-bottom: 30px;
+      padding: 15px;
+      border-left: 5px solid #0077cc;
+      background: #eef6fb;
+    }
+    .btn {
+      padding: 10px 20px;
+      background-color: #0077cc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background-color: #005fa3;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      padding: 8px;
+      border: 1px solid #ddd;
+    }
+    th {
+      background-color: #f0f8ff;
+    }
+    .note {
+      font-size: 0.9em;
+      color: #666;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Annualised Hours Advanced Scheduler</h1>
+    <p>This tool allows HR and managers to model bespoke annualised hours arrangements and calculate corresponding FTE, leave, and weekly patterns. It uses a standard 7.4-hour leave day baseline and assumes total annual hours are based on a 37-hour, 52-week contract (1,924 hours/year).</p>
+
+    <div class="section">
+      <h2>Step 1: Input Contract Details</h2>
+      <label for="fte">FTE (e.g. 0.45)</label>
+      <input type="number" id="fte" step="0.01" min="0" max="1">
+
+      <label for="workingWeeks">Working Weeks (out of 52)</label>
+      <input type="number" id="workingWeeks" step="0.1" min="1" max="52">
+
+      <label for="peakWeeks">Peak Weeks (e.g. term-time weeks)</label>
+      <input type="number" id="peakWeeks" step="1" min="0" max="52">
+
+      <label for="peakHours">Hours per Peak Week</label>
+      <input type="number" id="peakHours" step="0.1" min="0" max="60">
+
+      <label for="carriedLeave">Carried Over Leave (days)</label>
+      <input type="number" id="carriedLeave" step="0.1" min="0">
+
+      <label><input type="checkbox" id="hasLongService"> I have 5+ years of service</label>
+
+      <button class="btn" onclick="calculateAdvancedModel()">Calculate Schedule</button>
+    </div>
+
+    <div class="section" id="outputSummary">
+      <h2>Step 2: Schedule Output</h2>
+      <!-- Output table and results will be populated here by JS -->
+    </div>
+
+    <div class="note">
+      <strong>Note:</strong> This tool assumes the total annual working hours = FTE × 1,924 hours. Leave is calculated using a 7.4-hour day baseline and is adjusted for length of service and carried-over days.
+    </div>
+  </div>
+
+  <script>
+function calculateAdvancedModel() {
+  const fte = parseFloat(document.getElementById('fte').value);
+  const workingWeeks = parseFloat(document.getElementById('workingWeeks').value);
+  const peakWeeks = parseFloat(document.getElementById('peakWeeks').value);
+  const peakHours = parseFloat(document.getElementById('peakHours').value);
+  const carriedLeaveDays = parseFloat(document.getElementById('carriedLeave').value) || 0;
+  const hasLongService = document.getElementById('hasLongService').checked;
+
+  if (isNaN(fte) || isNaN(workingWeeks) || isNaN(peakWeeks) || isNaN(peakHours)) {
+    alert("Please complete all required fields with valid numbers.");
+    return;
+  }
+
+  if (peakWeeks > workingWeeks) {
+    alert("Peak weeks cannot exceed total working weeks.");
+    return;
+  }
+
+  const totalAnnualHours = fte * 1924;
+  const leaveDays = hasLongService ? 25 : 20;
+  const leaveHours = (leaveDays + carriedLeaveDays) * 7.4 * fte;
+
+  const nonPeakWeeks = workingWeeks - peakWeeks;
+  const peakHoursTotal = peakWeeks * peakHours;
+  const nonPeakHoursTotal = totalAnnualHours - peakHoursTotal;
+  const nonPeakWeeklyHours = nonPeakWeeks > 0 ? nonPeakHoursTotal / nonPeakWeeks : 0;
+  const nonPeakDailyHours = nonPeakWeeklyHours / 5;
+
+  const outputHTML = `
+    <table>
+      <tr><th>Measure</th><th>Value</th></tr>
+      <tr><td>Total Annual Hours</td><td>${totalAnnualHours.toFixed(2)} hrs</td></tr>
+      <tr><td>Peak Weeks</td><td>${peakWeeks} weeks @ ${peakHours.toFixed(2)} hrs/week</td></tr>
+      <tr><td>Non-Peak Weeks</td><td>${nonPeakWeeks} weeks @ ${nonPeakWeeklyHours.toFixed(2)} hrs/week</td></tr>
+      <tr><td>Leave Entitlement</td><td>${leaveHours.toFixed(2)} hrs (${(leaveHours / 7.4).toFixed(2)} days)</td></tr>
+      <tr><td>Leave Day Deduction (Peak)</td><td>8.00 hrs/day</td></tr>
+      <tr><td>Leave Day Deduction (Non-Peak)</td><td>${nonPeakDailyHours.toFixed(2)} hrs/day</td></tr>
+    </table>
+    <p class="note">Leave is calculated using a standard 7.4-hour day baseline. Actual deductions depend on whether leave is taken in peak (8 hrs/day) or non-peak (${nonPeakDailyHours.toFixed(2)} hrs/day) weeks.</p>
+  `;
+
+  document.getElementById('outputSummary').innerHTML = `
+    <h2>Step 2: Schedule Output</h2>
+    ${outputHTML}
+  `;
+}
+function calculateAdvancedModel() {
+  const fte = parseFloat(document.getElementById('fte').value);
+  const workingWeeks = parseFloat(document.getElementById('workingWeeks').value);
+  const peakWeeks = parseFloat(document.getElementById('peakWeeks').value);
+  const peakHours = parseFloat(document.getElementById('peakHours').value);
+  const carriedLeave = parseFloat(document.getElementById('carriedLeave').value) || 0;
+  const hasLongService = document.getElementById('hasLongService').checked;
+
+  if (isNaN(fte) || isNaN(workingWeeks) || isNaN(peakWeeks) || isNaN(peakHours)) {
+    alert("Please complete all fields before calculating.");
+    return;
+  }
+
+  const annualHours = fte * 1924;
+  const nonPeakWeeks = workingWeeks - peakWeeks;
+  const peakTotalHours = peakWeeks * peakHours;
+  const nonPeakTotalHours = annualHours - peakTotalHours;
+  const nonPeakHoursPerWeek = nonPeakWeeks > 0 ? nonPeakTotalHours / nonPeakWeeks : 0;
+  const nonPeakHoursPerDay = nonPeakHoursPerWeek / 5;
+
+  const leaveDays = hasLongService ? 25 : 20;
+  const standardLeaveDayHours = 7.4;
+  const totalLeaveHours = (leaveDays + carriedLeave) * standardLeaveDayHours * fte;
+  const leaveDaysEquivalent = totalLeaveHours / standardLeaveDayHours;
+
+  const output = `
+    <table>
+      <tr><th>Measure</th><th>Value</th></tr>
+      <tr><td>FTE</td><td>${fte.toFixed(2)}</td></tr>
+      <tr><td>Total Annual Hours</td><td>${annualHours.toFixed(2)} hrs</td></tr>
+      <tr><td>Peak Weeks</td><td>${peakWeeks}</td></tr>
+      <tr><td>Hours per Peak Week</td><td>${peakHours} hrs</td></tr>
+      <tr><td>Total Peak Hours</td><td>${peakTotalHours.toFixed(2)} hrs</td></tr>
+      <tr><td>Non-Peak Weeks</td><td>${nonPeakWeeks}</td></tr>
+      <tr><td>Hours per Non-Peak Week</td><td>${nonPeakHoursPerWeek.toFixed(2)} hrs</td></tr>
+      <tr><td>Daily Hours in Non-Peak Weeks</td><td>${nonPeakHoursPerDay.toFixed(2)} hrs (~${Math.floor(nonPeakHoursPerDay)}h ${Math.round((nonPeakHoursPerDay % 1) * 60)}m)</td></tr>
+      <tr><td>Leave Entitlement</td><td>${totalLeaveHours.toFixed(2)} hrs (${leaveDaysEquivalent.toFixed(2)} days)</td></tr>
+    </table>
+    <p class="note">
+      Leave entitlement is calculated using a 7.4-hour day. However, when leave is taken, deductions are based on actual daily hours:
+      <ul>
+        <li><strong>Peak Weeks:</strong> 8.00 hrs/day</li>
+        <li><strong>Non-Peak Weeks:</strong> ${nonPeakHoursPerDay.toFixed(2)} hrs/day</li>
+      </ul>
+    </p>
+  `;
+
+  document.getElementById("outputSummary").innerHTML = `
+    <h2>Step 2: Schedule Output</h2>
+    ${output}
+  `;
+}
+</script></script>
+</body>
+</html>
