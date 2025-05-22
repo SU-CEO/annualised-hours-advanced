@@ -73,26 +73,42 @@
     <h1>Annualised Hours Advanced Scheduler</h1>
     <p>This tool allows HR and managers to model bespoke annualised hours arrangements and calculate corresponding FTE, leave, and weekly patterns. It uses a standard 7.4-hour leave day baseline and assumes total annual hours are based on a 37-hour, 52-week contract (1,924 hours/year).</p>
 
-    <div class="section">
-      <h2>Step 1: Input Contract Details</h2>
-      <label for="fte">FTE (e.g. 0.45)</label>
+    $1
+
+      <label for="mode">Please select a scheduling mode</label>
+      <select id="mode" onchange="toggleMode()">
+  <option value="fixed">Fixed Peak Mode – you set peak weeks/hours, tool calculates the rest</option>
+  <option value="manual">Manual Mode – you define both peak and non-peak hours</option>
+  <option value="flat">Flat Weekly Schedule – same hours every week (coming soon)</option>
+</select>
+      <label for="fte">Please input the staff member's FTE (e.g. 0.45 for 45%)</label>
       <input type="number" id="fte" step="0.01" min="0" max="1">
 
-      <label for="workingWeeks">Working Weeks (out of 52)</label>
+      <label for="workingWeeks">Please input the total number of working weeks per year (out of 52)</label>
       <input type="number" id="workingWeeks" step="0.1" min="1" max="52">
 
-      <label for="peakWeeks">Peak Weeks (e.g. term-time weeks)</label>
-      <input type="number" id="peakWeeks" step="1" min="0" max="52">
+      <label for="peakWeeks">Please input the number of peak (term-time) weeks worked</label>
+      <input type="number" id="peakWeeks" step="1" min="0" max="52" value="43">
 
-      <label for="peakHours">Hours per Peak Week</label>
+      <label for="peakHours">Please input the number of hours worked per peak week</label>
       <input type="number" id="peakHours" step="0.1" min="0" max="60">
 
-      <label for="carriedLeave">Carried Over Leave (days)</label>
+      <label for="carriedLeave">Please input any carried-over leave in days from the previous year (if any)</label>
       <input type="number" id="carriedLeave" step="0.1" min="0">
 
-      <label><input type="checkbox" id="hasLongService"> I have 5+ years of service</label>
+      <label><input type="checkbox" id="hasLongService"> Tick this box if the staff member has 5 or more years of service</label>
 
-      <button class="btn" onclick="calculateAdvancedModel()">Calculate Schedule</button>
+      <div id="manualInputs" style="display:none;">
+        <label for="manualNonPeakWeeks">Please input number of non-peak weeks</label>
+        <input type="number" id="manualNonPeakWeeks" step="1" min="0" max="52">
+
+        <label for="manualNonPeakHours">Please input hours per non-peak week</label>
+        <input type="number" id="manualNonPeakHours" step="0.1" min="0" max="60">
+      </div>
+
+      $1
+      <button class="btn" onclick="downloadScheduleCSV()">Download CSV</button>
+      <button class="btn" onclick="window.print()">Print Summary</button>
     </div>
 
     <div class="section" id="outputSummary">
@@ -203,6 +219,35 @@ function calculateAdvancedModel() {
     <h2>Step 2: Schedule Output</h2>
     ${output}
   `;
+}
+
+function toggleMode() {
+  const mode = document.getElementById('mode').value;
+  const manualSection = document.getElementById('manualInputs');
+  if (mode === 'manual') {
+    manualSection.style.display = 'block';
+  } else {
+    manualSection.style.display = 'none';
+  }
+}
+
+function downloadScheduleCSV() {
+  const output = document.getElementById('outputSummary');
+  if (!output) return;
+  let rows = [['Measure', 'Value']];
+  output.querySelectorAll('table tr').forEach(row => {
+    const cells = row.querySelectorAll('td');
+    if (cells.length === 2) rows.push([cells[0].innerText, cells[1].innerText]);
+  });
+  const csv = rows.map(r => r.join(',')).join('
+');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'annualised_schedule_summary.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 </script></script>
 </body>
